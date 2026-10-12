@@ -6,8 +6,10 @@
 pub mod checker;
 pub mod error;
 pub mod monitoring;
+pub mod proxy;
 pub mod runner;
 pub mod scheduler;
+pub mod secret;
 pub mod settings;
 pub mod storage;
 pub mod web;

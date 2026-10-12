@@ -38,6 +38,10 @@ pub struct AppSettings {
     pub minimize_to_tray: bool,
     /// Endpoint that echoes request headers, used for proxy anonymity checks.
     pub proxy_judge_url: Option<String>,
+    /// Connectivity test URL used when no judge is configured.
+    pub proxy_test_url: Option<String>,
+    /// Optional MaxMind GeoLite2 .mmdb file for proxy country lookup.
+    pub geoip_db_path: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -53,6 +57,8 @@ impl Default for AppSettings {
             autostart: false,
             minimize_to_tray: true,
             proxy_judge_url: None,
+            proxy_test_url: None,
+            geoip_db_path: None,
         }
     }
 }
@@ -63,10 +69,11 @@ impl AppSettings {
         self.retention_days = self.retention_days.clamp(1, 3650);
         self.default_timeout_secs = self.default_timeout_secs.clamp(1, 300);
         self.default_concurrency = self.default_concurrency.clamp(1, 1000);
-        self.proxy_judge_url = self
-            .proxy_judge_url
-            .map(|url| url.trim().to_owned())
-            .filter(|url| !url.is_empty());
+        let clean =
+            |value: Option<String>| value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty());
+        self.proxy_judge_url = clean(self.proxy_judge_url);
+        self.proxy_test_url = clean(self.proxy_test_url);
+        self.geoip_db_path = clean(self.geoip_db_path);
         self
     }
 

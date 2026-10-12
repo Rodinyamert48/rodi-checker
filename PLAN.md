@@ -206,7 +206,7 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 | **0** ✅ | İskelet | Workspace, Tauri 2 + Next.js + Tailwind kurulumu, CI, SQLite + migration'lar, layout/navigasyon, tema |
 | **1** ✅ | Çekirdek | `Checker` trait, JobRunner, Scheduler, storage katmanı, event akışı, ayarlar |
 | **2** ✅ | Web İzleme | HTTP/SSL/DNS/TCP kontrolleri, monitör CRUD, geçmiş grafikleri, uptime |
-| **3** | Proxy Checker | İçe aktarma/parser, toplu test, anonimlik, GeoIP, filtre/dışa aktarma |
+| **3** ✅ | Proxy Checker | İçe aktarma/parser, toplu test, anonimlik, GeoIP, filtre/dışa aktarma |
 | **4** | Dosya Bütünlüğü | Paralel hash, baseline, karşılaştırma, canlı izleme |
 | **5** | Sistem Sağlığı | Canlı metrikler, süreç/port/servis, eşik uyarıları |
 | **6** | Ortak özellikler + CLI | Dashboard, bildirimler, raporlar, tepsi, autostart, i18n, `rodi-checker` CLI komutları |

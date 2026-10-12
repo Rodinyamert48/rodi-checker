@@ -12,6 +12,10 @@ import {
   type AppSettings,
   type CheckKind,
   type CheckResult,
+  type ImportPreview,
+  type ProxyListSummary,
+  type ProxyProtocol,
+  type StoredProxy,
   type Incident,
   type Monitor,
   type MonitorStats,
@@ -67,4 +71,20 @@ export const api = {
   latestResults: () => call<StoredResult[]>("latest_results", undefined, []),
   listIncidents: (monitorId?: number, limit = 50) =>
     call<Incident[]>("list_incidents", { monitorId: monitorId ?? null, limit }, []),
+
+  readTextFile: (path: string) => call<string>("read_text_file", { path }),
+
+  // ---- proxies ----
+  proxyPreview: (text: string, protocol: ProxyProtocol) => call<ImportPreview>("proxy_preview", { text, protocol }),
+  proxyImport: (name: string, text: string, protocol: ProxyProtocol) =>
+    call<ProxyListSummary>("proxy_import", { name, text, protocol }),
+  proxyLists: () => call<ProxyListSummary[]>("proxy_lists", undefined, []),
+  proxyItems: (listId: number) => call<StoredProxy[]>("proxy_items", { listId }, []),
+  proxyDeleteList: (listId: number) => call<void>("proxy_delete_list", { listId }),
+  proxyRemoveDead: (listId: number) => call<number>("proxy_remove_dead", { listId }),
+  proxyRunning: () => call<number[]>("proxy_running", undefined, []),
+  proxyCheck: (listId: number) => call<void>("proxy_check", { listId }),
+  proxyCancel: (listId: number) => call<void>("proxy_cancel", { listId }),
+  proxyExport: (listId: number, path: string, format: "txt" | "csv", onlyWorking: boolean, includePasswords: boolean) =>
+    call<number>("proxy_export", { listId, path, format, onlyWorking, includePasswords }),
 };

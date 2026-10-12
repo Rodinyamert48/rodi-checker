@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod monitor_runtime;
 mod notify;
+mod secret_key;
 mod state;
 mod tray;
 
@@ -44,10 +45,14 @@ pub fn run() {
             let start_hidden =
                 settings.start_minimized || std::env::args().any(|arg| arg == "--minimized");
 
+            let secrets = secret_key::load(&data_dir)?;
+
             app.manage(AppState {
                 storage: storage.clone(),
                 scheduler: Scheduler::new(),
                 web: WebChecker::new(),
+                secrets,
+                proxy_jobs: Default::default(),
                 data_dir,
                 database_path,
                 settings: RwLock::new(settings),
@@ -94,6 +99,17 @@ pub fn run() {
             commands::monitors::monitor_stats,
             commands::monitors::latest_results,
             commands::monitors::list_incidents,
+            commands::app::read_text_file,
+            commands::proxy::proxy_preview,
+            commands::proxy::proxy_import,
+            commands::proxy::proxy_lists,
+            commands::proxy::proxy_items,
+            commands::proxy::proxy_delete_list,
+            commands::proxy::proxy_remove_dead,
+            commands::proxy::proxy_running,
+            commands::proxy::proxy_cancel,
+            commands::proxy::proxy_check,
+            commands::proxy::proxy_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rodi Checker");

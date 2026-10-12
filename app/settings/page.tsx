@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { Card, Checkbox as Toggle, Field, inputClass, PageHeader } from "@/components/ui";
+import { Button, Card, Checkbox as Toggle, Field, inputClass, PageHeader } from "@/components/ui";
+import { pickFile } from "@/lib/dialog";
 import { useT } from "@/i18n";
 import { useSaveSettings, useSettings } from "@/lib/settings";
 import { DEFAULT_SETTINGS, type AppSettings, type Language, type Theme } from "@/lib/types";
@@ -126,6 +127,33 @@ export default function SettingsPage() {
               value={draft.proxyJudgeUrl ?? ""}
               onChange={(e) => set("proxyJudgeUrl", e.target.value || null)}
             />
+          </Field>
+          <Field label={t.settings.proxyTestUrl} hint={t.settings.proxyTestUrlHint}>
+            <input
+              type="url"
+              placeholder="http://www.gstatic.com/generate_204"
+              className={inputClass}
+              value={draft.proxyTestUrl ?? ""}
+              onChange={(e) => set("proxyTestUrl", e.target.value || null)}
+            />
+          </Field>
+          <Field label={t.settings.geoip} hint={t.settings.geoipHint}>
+            <div className="flex gap-2">
+              <input
+                className={inputClass}
+                placeholder="C:\\GeoLite2-Country.mmdb"
+                value={draft.geoipDbPath ?? ""}
+                onChange={(e) => set("geoipDbPath", e.target.value || null)}
+              />
+              <Button
+                onClick={async () => {
+                  const path = await pickFile([{ name: "MaxMind DB", extensions: ["mmdb"] }]);
+                  if (path) set("geoipDbPath", path);
+                }}
+              >
+                {t.common.browse}
+              </Button>
+            </div>
           </Field>
         </Card>
       </div>

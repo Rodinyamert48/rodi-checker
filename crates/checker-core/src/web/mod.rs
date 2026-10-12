@@ -1,7 +1,7 @@
 //! Web / API monitoring: HTTP, SSL certificate, DNS and TCP port checks.
 
 mod dns;
-mod http;
+pub(crate) mod http;
 mod ssl;
 mod tcp;
 

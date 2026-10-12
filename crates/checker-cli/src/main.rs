@@ -2,13 +2,16 @@
 
 mod output;
 
+use std::io::Write as _;
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Duration;
 
+use checker_core::proxy::{parse_list, GeoIp, ProxyChecker, ProxyCheckerConfig, ProxyProtocol};
 use checker_core::web::{
     DnsTarget, HttpTarget, RecordType, SslTarget, TcpTarget, WebChecker, WebTarget,
 };
-use checker_core::{CheckContext, CheckKind, Checker};
+use checker_core::{CheckContext, CheckKind, Checker, JobRunner};
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
@@ -98,6 +101,46 @@ enum Command {
     },
     /// Check whether a TCP port is open.
     Port { host: String, port: u16 },
+    /// Check a proxy list file (one proxy per line).
+    Proxy {
+        file: String,
+        /// Protocol for lines without a scheme.
+        #[arg(long, value_enum, default_value_t = Proto::Http)]
+        protocol: Proto,
+        #[arg(long, default_value_t = 50)]
+        concurrency: usize,
+        /// Judge URL echoing request headers (enables anonymity / exit IP).
+        #[arg(long)]
+        judge: Option<String>,
+        /// Connectivity test URL when no judge is given.
+        #[arg(long)]
+        test_url: Option<String>,
+        /// MaxMind GeoLite2 .mmdb file for country lookup.
+        #[arg(long)]
+        geoip: Option<String>,
+        /// Write working proxies to this file.
+        #[arg(long)]
+        out: Option<String>,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Proto {
+    Http,
+    Https,
+    Socks4,
+    Socks5,
+}
+
+impl From<Proto> for ProxyProtocol {
+    fn from(value: Proto) -> Self {
+        match value {
+            Proto::Http => ProxyProtocol::Http,
+            Proto::Https => ProxyProtocol::Https,
+            Proto::Socks4 => ProxyProtocol::Socks4,
+            Proto::Socks5 => ProxyProtocol::Socks5,
+        }
+    }
 }
 
 fn split_host_port(value: &str, default_port: u16) -> (String, u16) {
@@ -196,8 +239,108 @@ async fn main() -> ExitCode {
             };
             run_web(WebTarget::Tcp(target), &ctx, &cli).await
         }
+        Command::Proxy {
+            file,
+            protocol,
+            concurrency,
+            judge,
+            test_url,
+            geoip,
+            out,
+        } => {
+            let options = ProxyOptions {
+                file,
+                protocol: (*protocol).into(),
+                concurrency: *concurrency,
+                judge: judge.clone(),
+                test_url: test_url.clone(),
+                geoip: geoip.as_deref(),
+                out: out.as_deref(),
+            };
+            match run_proxy(options, &ctx, &cli).await {
+                Ok(code) => code,
+                Err(err) => {
+                    eprintln!("{err}");
+                    2
+                }
+            }
+        }
     };
     ExitCode::from(code)
+}
+
+struct ProxyOptions<'a> {
+    file: &'a str,
+    protocol: ProxyProtocol,
+    concurrency: usize,
+    judge: Option<String>,
+    test_url: Option<String>,
+    geoip: Option<&'a str>,
+    out: Option<&'a str>,
+}
+
+async fn run_proxy(options: ProxyOptions<'_>, ctx: &CheckContext, cli: &Cli) -> anyhow::Result<u8> {
+    let text = std::fs::read_to_string(options.file)?;
+    let parsed = parse_list(&text, options.protocol);
+    for error in &parsed.errors {
+        eprintln!("line {}: {} ({})", error.line, error.text, error.reason);
+    }
+    if parsed.entries.is_empty() {
+        anyhow::bail!("no valid proxies in {}", options.file);
+    }
+
+    let geoip = options.geoip.map(GeoIp::open).transpose()?;
+    let real_ip = match options.judge.as_deref() {
+        Some(judge) => ProxyChecker::detect_real_ip(judge, ctx.timeout).await,
+        None => None,
+    };
+    let checker = Arc::new(ProxyChecker::new(ProxyCheckerConfig {
+        judge_url: options.judge,
+        test_url: options.test_url,
+        real_ip,
+        geoip,
+    }));
+
+    let entries = parsed.entries;
+    let results = JobRunner::new(options.concurrency)
+        .run(checker, entries.clone(), ctx, |progress, _, _| {
+            if !cli.json {
+                eprint!("\r{}/{}", progress.done, progress.total);
+                let _ = std::io::stderr().flush();
+            }
+        })
+        .await;
+    if !cli.json {
+        eprintln!();
+    }
+
+    let working: Vec<_> = results
+        .iter()
+        .filter(|(_, r)| r.status.is_ok())
+        .map(|(i, _)| &entries[*i])
+        .collect();
+
+    if cli.json {
+        let rows: Vec<_> = results
+            .iter()
+            .map(|(i, r)| serde_json::json!({ "proxy": entries[*i].display(), "result": r }))
+            .collect();
+        output::print_json(&rows);
+    } else {
+        for (i, result) in &results {
+            output::print_result(&entries[*i].display(), result, false, cli.lang);
+        }
+        match cli.lang {
+            Lang::Tr => println!("\n{}/{} proxy çalışıyor", working.len(), entries.len()),
+            Lang::En => println!("\n{}/{} proxies working", working.len(), entries.len()),
+        }
+    }
+
+    if let Some(out) = options.out {
+        let lines: Vec<String> = working.iter().map(|e| e.to_line(true)).collect();
+        std::fs::write(out, lines.join("\n") + "\n")?;
+    }
+    Ok(if working.is_empty() { 1 } else { 0 })
 }
 
 #[cfg(test)]

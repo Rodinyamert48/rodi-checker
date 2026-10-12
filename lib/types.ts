@@ -16,6 +16,8 @@ export interface AppSettings {
   autostart: boolean;
   minimizeToTray: boolean;
   proxyJudgeUrl: string | null;
+  proxyTestUrl: string | null;
+  geoipDbPath: string | null;
 }
 
 export interface CheckResult {
@@ -95,4 +97,50 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autostart: false,
   minimizeToTray: true,
   proxyJudgeUrl: null,
+  proxyTestUrl: null,
+  geoipDbPath: null,
 };
+
+export type ProxyProtocol = "http" | "https" | "socks4" | "socks5";
+export type Anonymity = "transparent" | "anonymous" | "elite";
+
+export interface ProxyListSummary {
+  id: number;
+  name: string;
+  createdAt: string;
+  total: number;
+  checked: number;
+  working: number;
+}
+
+export interface StoredProxy {
+  id: number;
+  listId: number;
+  protocol: ProxyProtocol;
+  host: string;
+  port: number;
+  username: string | null;
+  hasPassword: boolean;
+  status: Status | null;
+  latencyMs: number | null;
+  anonymity: Anonymity | null;
+  exitIp: string | null;
+  country: string | null;
+  message: string | null;
+  checkedAt: string | null;
+}
+
+export interface ImportPreview {
+  count: number;
+  duplicates: number;
+  errorCount: number;
+  errors: { line: number; text: string; reason: string }[];
+}
+
+export interface ProxyProgressEvent {
+  listId: number;
+  done: number;
+  total: number;
+  working: number;
+  running: boolean;
+}

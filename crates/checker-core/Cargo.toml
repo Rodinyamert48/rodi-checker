@@ -26,6 +26,8 @@ webpki-roots = "0.26"
 x509-parser = "0.16"
 url = "2"
 maxminddb = "0.24"
+chacha20poly1305 = "0.10"
+base64 = "0.22"
 # files
 sha2 = "0.10"
 blake3 = "1"

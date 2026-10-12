@@ -1,6 +1,7 @@
 //! SQLite persistence.
 
 mod models;
+mod proxies;
 
 use std::path::Path;
 use std::str::FromStr;
@@ -12,6 +13,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::SqlitePool;
 
 pub use models::{Incident, Monitor, MonitorStats, NewMonitor, StoredResult};
+pub use proxies::{ProxyListSummary, StoredProxy};
 
 use crate::checker::{CheckKind, CheckResult};
 use crate::error::{CoreError, Result};
