@@ -1,5 +1,6 @@
 //! SQLite persistence.
 
+mod baselines;
 mod models;
 mod proxies;
 
@@ -12,6 +13,7 @@ use serde::Serialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::SqlitePool;
 
+pub use baselines::Baseline;
 pub use models::{Incident, Monitor, MonitorStats, NewMonitor, StoredResult};
 pub use proxies::{ProxyListSummary, StoredProxy};
 

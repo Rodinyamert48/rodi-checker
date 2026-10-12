@@ -144,3 +144,56 @@ export interface ProxyProgressEvent {
   working: number;
   running: boolean;
 }
+
+export type HashAlgorithm = "sha256" | "blake3";
+
+export interface Baseline {
+  id: number;
+  name: string;
+  rootPath: string;
+  algorithm: HashAlgorithm;
+  excludes: string;
+  createdAt: string;
+  fileCount: number;
+  totalSize: number;
+}
+
+export interface FileEntry {
+  path: string;
+  size: number;
+  modifiedAt: string | null;
+  hash: string;
+}
+
+export interface ModifiedFile {
+  path: string;
+  oldHash: string;
+  newHash: string;
+  oldSize: number;
+  newSize: number;
+}
+
+export interface CompareResult {
+  baseline: Baseline;
+  diff: { added: FileEntry[]; removed: FileEntry[]; modified: ModifiedFile[]; unchanged: number };
+  errors: [string, string][];
+  cancelled: boolean;
+}
+
+export interface FileHashes {
+  sha256: string;
+  blake3: string;
+  size: number;
+}
+
+export interface FilesProgressEvent {
+  done: number;
+  total: number;
+  running: boolean;
+}
+
+export interface FilesChangeEvent {
+  baselineId: number;
+  baselineName: string;
+  paths: string[];
+}

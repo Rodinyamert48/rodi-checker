@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Mutex, RwLock};
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex, RwLock};
 
 use checker_core::secret::SecretBox;
 use checker_core::web::WebChecker;
@@ -15,6 +16,11 @@ pub struct AppState {
     pub secrets: SecretBox,
     /// Running proxy list checks, by list id.
     pub proxy_jobs: Mutex<HashMap<i64, CancellationToken>>,
+    /// Set while a folder scan runs; only one scan at a time.
+    pub files_busy: AtomicBool,
+    pub files_cancel: Arc<AtomicBool>,
+    /// Live folder watchers, by baseline id.
+    pub watchers: Mutex<HashMap<i64, ::notify::RecommendedWatcher>>,
     pub data_dir: PathBuf,
     pub database_path: PathBuf,
     /// Cached copy of the persisted settings for synchronous access

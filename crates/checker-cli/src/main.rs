@@ -7,11 +7,12 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
+use checker_core::files::{self, HashAlgorithm, ScanOptions};
 use checker_core::proxy::{parse_list, GeoIp, ProxyChecker, ProxyCheckerConfig, ProxyProtocol};
 use checker_core::web::{
     DnsTarget, HttpTarget, RecordType, SslTarget, TcpTarget, WebChecker, WebTarget,
 };
-use checker_core::{CheckContext, CheckKind, Checker, JobRunner};
+use checker_core::{CheckContext, CheckKind, Checker, JobRunner, Storage};
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
@@ -122,6 +123,39 @@ enum Command {
         #[arg(long)]
         out: Option<String>,
     },
+    /// Hash a file or folder; save or compare baselines (shared with the app).
+    Hash {
+        path: String,
+        #[arg(long, value_enum, default_value_t = Algo::Sha256)]
+        algo: Algo,
+        /// Glob pattern to skip (repeatable), e.g. --exclude "*.log".
+        #[arg(long = "exclude")]
+        excludes: Vec<String>,
+        /// Save the result as a baseline with this name.
+        #[arg(long, conflicts_with = "compare")]
+        save_baseline: Option<String>,
+        /// Compare against the baseline with this name.
+        #[arg(long)]
+        compare: Option<String>,
+        /// Database file (defaults to the desktop app's database).
+        #[arg(long)]
+        db: Option<String>,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Algo {
+    Sha256,
+    Blake3,
+}
+
+impl From<Algo> for HashAlgorithm {
+    fn from(value: Algo) -> Self {
+        match value {
+            Algo::Sha256 => HashAlgorithm::Sha256,
+            Algo::Blake3 => HashAlgorithm::Blake3,
+        }
+    }
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -265,8 +299,165 @@ async fn main() -> ExitCode {
                 }
             }
         }
+        Command::Hash {
+            path,
+            algo,
+            excludes,
+            save_baseline,
+            compare,
+            db,
+        } => {
+            let options = HashOptions {
+                path,
+                scan: ScanOptions {
+                    algorithm: (*algo).into(),
+                    excludes: excludes.clone(),
+                },
+                save_baseline: save_baseline.as_deref(),
+                compare: compare.as_deref(),
+                db: db.as_deref(),
+            };
+            match run_hash(options, &cli).await {
+                Ok(code) => code,
+                Err(err) => {
+                    eprintln!("{err}");
+                    2
+                }
+            }
+        }
     };
     ExitCode::from(code)
+}
+
+struct HashOptions<'a> {
+    path: &'a str,
+    scan: ScanOptions,
+    save_baseline: Option<&'a str>,
+    compare: Option<&'a str>,
+    db: Option<&'a str>,
+}
+
+/// The desktop app's database: `%APPDATA%\\com.rodi.checker\\rodi-checker.db` on Windows.
+fn default_db_path() -> anyhow::Result<std::path::PathBuf> {
+    let dir = dirs::data_dir()
+        .ok_or_else(|| anyhow::anyhow!("cannot find the data directory"))?
+        .join("com.rodi.checker");
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir.join("rodi-checker.db"))
+}
+
+async fn run_hash(options: HashOptions<'_>, cli: &Cli) -> anyhow::Result<u8> {
+    let root = std::path::PathBuf::from(options.path);
+    let root = std::fs::canonicalize(&root).unwrap_or(root);
+
+    let storage = if options.save_baseline.is_some() || options.compare.is_some() {
+        let db = match options.db {
+            Some(db) => std::path::PathBuf::from(db),
+            None => default_db_path()?,
+        };
+        Some(Storage::open(db).await?)
+    } else {
+        None
+    };
+
+    // When comparing, scan with the baseline's own settings.
+    let (baseline, scan_options) = match (options.compare, &storage) {
+        (Some(name), Some(storage)) => {
+            let baseline = storage.baseline_by_name(name).await?;
+            let scan_options = baseline.scan_options()?;
+            (Some(baseline), scan_options)
+        }
+        _ => (None, options.scan.clone()),
+    };
+
+    let show_progress = !cli.json && root.is_dir();
+    let scan_root = root.clone();
+    let report = tokio::task::spawn_blocking(move || {
+        files::scan(
+            &scan_root,
+            &scan_options,
+            &Default::default(),
+            |done, total| {
+                if show_progress {
+                    eprint!("\r{done}/{total}");
+                }
+            },
+        )
+    })
+    .await??;
+    if show_progress {
+        eprintln!();
+    }
+    for (path, reason) in &report.errors {
+        eprintln!("{path}: {reason}");
+    }
+
+    if let (Some(baseline), Some(storage)) = (baseline, &storage) {
+        let previous = storage.baseline_entries(baseline.id).await?;
+        let diff = files::compare(&previous, &report.entries);
+        if cli.json {
+            output::print_json(&diff);
+        } else {
+            for entry in &diff.added {
+                println!("+ {}", entry.path);
+            }
+            for entry in &diff.removed {
+                println!("- {}", entry.path);
+            }
+            for entry in &diff.modified {
+                println!("~ {}", entry.path);
+            }
+            match cli.lang {
+                Lang::Tr => println!(
+                    "{} eklenen, {} silinen, {} değişen, {} aynı",
+                    diff.added.len(),
+                    diff.removed.len(),
+                    diff.modified.len(),
+                    diff.unchanged
+                ),
+                Lang::En => println!(
+                    "{} added, {} removed, {} modified, {} unchanged",
+                    diff.added.len(),
+                    diff.removed.len(),
+                    diff.modified.len(),
+                    diff.unchanged
+                ),
+            }
+        }
+        return Ok(if diff.is_clean() { 0 } else { 1 });
+    }
+
+    if cli.json {
+        output::print_json(&report.entries);
+    } else {
+        for entry in &report.entries {
+            println!("{}  {}", entry.hash, entry.path);
+        }
+    }
+
+    if let (Some(name), Some(storage)) = (options.save_baseline, &storage) {
+        let saved = storage
+            .save_baseline(
+                name,
+                &root.display().to_string(),
+                &options.scan,
+                &report.entries,
+            )
+            .await?;
+        if !cli.json {
+            match cli.lang {
+                Lang::Tr => eprintln!(
+                    "baseline \"{}\" kaydedildi ({} dosya)",
+                    saved.name, saved.file_count
+                ),
+                Lang::En => eprintln!(
+                    "baseline \"{}\" saved ({} files)",
+                    saved.name, saved.file_count
+                ),
+            }
+        }
+    }
+    Ok(if report.errors.is_empty() { 0 } else { 1 })
 }
 
 struct ProxyOptions<'a> {

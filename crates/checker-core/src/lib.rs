@@ -5,6 +5,7 @@
 
 pub mod checker;
 pub mod error;
+pub mod files;
 pub mod monitoring;
 pub mod proxy;
 pub mod runner;

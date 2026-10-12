@@ -53,6 +53,9 @@ pub fn run() {
                 web: WebChecker::new(),
                 secrets,
                 proxy_jobs: Default::default(),
+                files_busy: Default::default(),
+                files_cancel: Default::default(),
+                watchers: Default::default(),
                 data_dir,
                 database_path,
                 settings: RwLock::new(settings),
@@ -66,9 +69,10 @@ pub fn run() {
             });
 
             let handle = app.handle().clone();
-            tauri::async_runtime::spawn(
-                async move { monitor_runtime::schedule_all(&handle).await },
-            );
+            tauri::async_runtime::spawn(async move {
+                monitor_runtime::schedule_all(&handle).await;
+                commands::files::restore_watchers(&handle).await;
+            });
 
             tray::create(app.handle())?;
 
@@ -110,6 +114,14 @@ pub fn run() {
             commands::proxy::proxy_cancel,
             commands::proxy::proxy_check,
             commands::proxy::proxy_export,
+            commands::files::files_hash,
+            commands::files::files_baselines,
+            commands::files::files_cancel,
+            commands::files::files_create_baseline,
+            commands::files::files_compare,
+            commands::files::files_delete_baseline,
+            commands::files::files_watching,
+            commands::files::files_watch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rodi Checker");

@@ -11,7 +11,11 @@ import {
   type AppInfo,
   type AppSettings,
   type CheckKind,
+  type Baseline,
   type CheckResult,
+  type CompareResult,
+  type FileHashes,
+  type HashAlgorithm,
   type ImportPreview,
   type ProxyListSummary,
   type ProxyProtocol,
@@ -87,4 +91,15 @@ export const api = {
   proxyCancel: (listId: number) => call<void>("proxy_cancel", { listId }),
   proxyExport: (listId: number, path: string, format: "txt" | "csv", onlyWorking: boolean, includePasswords: boolean) =>
     call<number>("proxy_export", { listId, path, format, onlyWorking, includePasswords }),
+
+  // ---- file integrity ----
+  filesHash: (path: string) => call<FileHashes>("files_hash", { path }),
+  filesBaselines: () => call<Baseline[]>("files_baselines", undefined, []),
+  filesCancel: () => call<void>("files_cancel"),
+  filesCreateBaseline: (name: string, root: string, algorithm: HashAlgorithm, excludes: string[]) =>
+    call<Baseline>("files_create_baseline", { name, root, algorithm, excludes }),
+  filesCompare: (baselineId: number) => call<CompareResult>("files_compare", { baselineId }),
+  filesDeleteBaseline: (baselineId: number) => call<void>("files_delete_baseline", { baselineId }),
+  filesWatching: () => call<number[]>("files_watching", undefined, []),
+  filesWatch: (baselineId: number, enabled: boolean) => call<void>("files_watch", { baselineId, enabled }),
 };
