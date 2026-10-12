@@ -107,6 +107,7 @@ impl FromStr for Status {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CheckResult {
     pub kind: CheckKind,
     pub status: Status,

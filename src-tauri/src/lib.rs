@@ -1,10 +1,13 @@
 mod commands;
 mod error;
+mod monitor_runtime;
+mod notify;
 mod state;
 mod tray;
 
 use std::sync::RwLock;
 
+use checker_core::web::WebChecker;
 use checker_core::{AppSettings, Scheduler, Storage};
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
@@ -44,6 +47,7 @@ pub fn run() {
             app.manage(AppState {
                 storage: storage.clone(),
                 scheduler: Scheduler::new(),
+                web: WebChecker::new(),
                 data_dir,
                 database_path,
                 settings: RwLock::new(settings),
@@ -55,6 +59,11 @@ pub fn run() {
                     Err(err) => tracing::warn!("pruning history failed: {err}"),
                 }
             });
+
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(
+                async move { monitor_runtime::schedule_all(&handle).await },
+            );
 
             tray::create(app.handle())?;
 
@@ -77,6 +86,14 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::monitors::list_monitors,
+            commands::monitors::create_monitor,
+            commands::monitors::update_monitor,
+            commands::monitors::delete_monitor,
+            commands::monitors::run_monitor_now,
+            commands::monitors::monitor_results,
+            commands::monitors::monitor_stats,
+            commands::monitors::latest_results,
+            commands::monitors::list_incidents,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rodi Checker");

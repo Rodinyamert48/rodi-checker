@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppLink } from "./app-link";
 import { usePathname } from "next/navigation";
 
 import { useT } from "@/i18n";
@@ -25,7 +25,7 @@ export function Sidebar() {
         {NAV_ITEMS.map(({ href, key, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href.replace(/\/$/, ""));
           return (
-            <Link
+            <AppLink
               key={key}
               href={href}
               className={cn(
@@ -35,7 +35,7 @@ export function Sidebar() {
             >
               <Icon className="size-4" aria-hidden />
               {t.nav[key]}
-            </Link>
+            </AppLink>
           );
         })}
       </nav>

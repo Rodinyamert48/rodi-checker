@@ -5,10 +5,12 @@
 
 pub mod checker;
 pub mod error;
+pub mod monitoring;
 pub mod runner;
 pub mod scheduler;
 pub mod settings;
 pub mod storage;
+pub mod web;
 
 pub use checker::{CheckContext, CheckKind, CheckResult, Checker, Status};
 pub use error::{CoreError, Result};

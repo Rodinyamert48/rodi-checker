@@ -1,38 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 
-import { Card, PageHeader } from "@/components/ui";
+import { Card, Checkbox as Toggle, Field, inputClass, PageHeader } from "@/components/ui";
 import { useT } from "@/i18n";
 import { useSaveSettings, useSettings } from "@/lib/settings";
 import { DEFAULT_SETTINGS, type AppSettings, type Language, type Theme } from "@/lib/types";
-
-const inputClass =
-  "w-full rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-      {hint && <span className="block text-xs text-muted">{hint}</span>}
-    </label>
-  );
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label className="flex items-center justify-between gap-4 py-1.5 text-sm">
-      {label}
-      <input
-        type="checkbox"
-        className="size-4 accent-[var(--color-accent)]"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    </label>
-  );
-}
 
 export default function SettingsPage() {
   const t = useT();

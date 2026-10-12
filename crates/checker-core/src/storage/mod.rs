@@ -11,7 +11,7 @@ use serde::Serialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use sqlx::SqlitePool;
 
-pub use models::{Monitor, NewMonitor, StoredResult};
+pub use models::{Incident, Monitor, MonitorStats, NewMonitor, StoredResult};
 
 use crate::checker::{CheckKind, CheckResult};
 use crate::error::{CoreError, Result};
@@ -215,6 +215,98 @@ impl Storage {
         .into_iter()
         .map(TryInto::try_into)
         .collect()
+    }
+
+    /// The newest result of every monitor.
+    pub async fn latest_results(&self) -> Result<Vec<StoredResult>> {
+        sqlx::query_as::<_, models::ResultRow>(
+            "SELECT r.*, m.kind FROM check_results r JOIN monitors m ON m.id = r.monitor_id
+             WHERE r.id IN (SELECT MAX(id) FROM check_results GROUP BY monitor_id)",
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(TryInto::try_into)
+        .collect()
+    }
+
+    /// Uptime and average latency of a monitor since `since`.
+    pub async fn monitor_stats(
+        &self,
+        monitor_id: i64,
+        since: DateTime<Utc>,
+    ) -> Result<MonitorStats> {
+        let (total, ok, avg): (i64, i64, Option<f64>) = sqlx::query_as(
+            "SELECT COUNT(*),
+                    COALESCE(SUM(status IN ('up', 'degraded')), 0),
+                    AVG(latency_ms)
+             FROM check_results WHERE monitor_id = ? AND checked_at >= ?",
+        )
+        .bind(monitor_id)
+        .bind(since)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(MonitorStats {
+            monitor_id,
+            total,
+            ok,
+            uptime: (total > 0).then(|| ok as f64 * 100.0 / total as f64),
+            avg_latency_ms: avg,
+        })
+    }
+
+    // ---- incidents ------------------------------------------------------
+
+    pub async fn open_incident(&self, monitor_id: i64) -> Result<Option<Incident>> {
+        Ok(sqlx::query_as::<_, Incident>(
+            "SELECT i.*, m.name AS monitor_name FROM incidents i JOIN monitors m ON m.id = i.monitor_id
+             WHERE i.monitor_id = ? AND i.resolved_at IS NULL ORDER BY i.started_at DESC LIMIT 1",
+        )
+        .bind(monitor_id)
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+
+    pub async fn start_incident(
+        &self,
+        monitor_id: i64,
+        at: DateTime<Utc>,
+        cause: Option<&str>,
+    ) -> Result<i64> {
+        Ok(
+            sqlx::query("INSERT INTO incidents (monitor_id, started_at, cause) VALUES (?, ?, ?)")
+                .bind(monitor_id)
+                .bind(at)
+                .bind(cause)
+                .execute(&self.pool)
+                .await?
+                .last_insert_rowid(),
+        )
+    }
+
+    pub async fn resolve_incident(&self, incident_id: i64, at: DateTime<Utc>) -> Result<()> {
+        sqlx::query("UPDATE incidents SET resolved_at = ? WHERE id = ?")
+            .bind(at)
+            .bind(incident_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Most recent incidents across all monitors (or one monitor).
+    pub async fn list_incidents(
+        &self,
+        monitor_id: Option<i64>,
+        limit: u32,
+    ) -> Result<Vec<Incident>> {
+        Ok(sqlx::query_as::<_, Incident>(
+            "SELECT i.*, m.name AS monitor_name FROM incidents i JOIN monitors m ON m.id = i.monitor_id
+             WHERE (?1 IS NULL OR i.monitor_id = ?1) ORDER BY i.started_at DESC LIMIT ?2",
+        )
+        .bind(monitor_id)
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await?)
     }
 
     /// Deletes history older than `retention_days`. Returns removed rows.

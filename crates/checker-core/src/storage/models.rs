@@ -128,3 +128,25 @@ impl TryFrom<ResultRow> for StoredResult {
         })
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Incident {
+    pub id: i64,
+    pub monitor_id: i64,
+    pub monitor_name: String,
+    pub started_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+    pub cause: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorStats {
+    pub monitor_id: i64,
+    pub total: i64,
+    pub ok: i64,
+    /// Percentage of successful checks, `None` when there is no data.
+    pub uptime: Option<f64>,
+    pub avg_latency_ms: Option<f64>,
+}

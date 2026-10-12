@@ -21,10 +21,49 @@ export interface AppSettings {
 export interface CheckResult {
   kind: CheckKind;
   status: Status;
-  latency_ms: number | null;
+  latencyMs: number | null;
   message: string | null;
-  details: unknown;
-  checked_at: string;
+  details: Record<string, unknown> | null;
+  checkedAt: string;
+}
+
+export interface StoredResult extends CheckResult {
+  id: number;
+  monitorId: number;
+}
+
+export type WebKind = "http" | "ssl" | "dns" | "tcp";
+
+export interface NewMonitor {
+  kind: CheckKind;
+  name: string;
+  config: Record<string, unknown>;
+  intervalSec: number;
+  enabled: boolean;
+  tags: string[];
+}
+
+export interface MonitorStats {
+  monitorId: number;
+  total: number;
+  ok: number;
+  uptime: number | null;
+  avgLatencyMs: number | null;
+}
+
+export interface Incident {
+  id: number;
+  monitorId: number;
+  monitorName: string;
+  startedAt: string;
+  resolvedAt: string | null;
+  cause: string | null;
+}
+
+export interface MonitorResultEvent {
+  monitorId: number;
+  result: CheckResult;
+  transition: "went_down" | "recovered" | null;
 }
 
 export interface Monitor {

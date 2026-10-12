@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
+import { AppLink } from "@/components/app-link";
 
 import { NAV_ITEMS } from "@/components/nav";
 import { Card, PageHeader } from "@/components/ui";
@@ -33,7 +33,7 @@ export default function DashboardPage() {
           const kinds = MODULE_KINDS[key];
           const count = kinds ? (monitors.data ?? []).filter((m) => kinds.includes(m.kind)).length : null;
           return (
-            <Link key={key} href={href} className="group">
+            <AppLink key={key} href={href} className="group">
               <Card className="h-full transition-colors group-hover:border-accent">
                 <Icon className="mb-3 size-6 text-accent" aria-hidden />
                 <h2 className="font-medium">{t.nav[key]}</h2>
@@ -44,7 +44,7 @@ export default function DashboardPage() {
                   </p>
                 )}
               </Card>
-            </Link>
+            </AppLink>
           );
         })}
       </div>
