@@ -482,9 +482,12 @@ struct HashOptions<'a> {
 
 /// The desktop app's database: `%APPDATA%\\com.rodi.checker\\rodi-checker.db` on Windows.
 fn default_db_path() -> anyhow::Result<std::path::PathBuf> {
-    let dir = dirs::data_dir()
-        .ok_or_else(|| anyhow::anyhow!("cannot find the data directory"))?
-        .join("com.rodi.checker");
+    let dir = match std::env::var_os("RODI_CHECKER_DATA_DIR") {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => dirs::data_dir()
+            .ok_or_else(|| anyhow::anyhow!("cannot find the data directory"))?
+            .join("com.rodi.checker"),
+    };
     std::fs::create_dir_all(&dir)?;
     Ok(dir.join("rodi-checker.db"))
 }

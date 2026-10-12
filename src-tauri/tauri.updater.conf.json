@@ -1,0 +1,16 @@
+{
+  "bundle": {
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "PUBKEY_PLACEHOLDER",
+      "endpoints": [
+        "https://github.com/rodinyamert48/rodi-checker/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

@@ -6,3 +6,4 @@ pub mod proxy;
 pub mod reports;
 pub mod settings;
 pub mod system;
+pub mod updates;

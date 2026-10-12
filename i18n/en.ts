@@ -278,6 +278,15 @@ const en: Dictionary = {
     minimizeToTray: "Minimize to system tray on close",
     startMinimized: "Start minimized",
     autostart: "Start with Windows",
+    autoUpdate: "Check for updates on startup",
+    updates: "Updates",
+    checkUpdates: "Check for updates",
+    currentVersion: "Installed version: {version}",
+    upToDate: "You are on the latest version.",
+    updateAvailable: "New version available: {version}",
+    installUpdate: "Install and restart",
+    updatesDisabled: "Automatic updates are not configured in this build.",
+    dataFolder: "Data folder",
   },
 };
 

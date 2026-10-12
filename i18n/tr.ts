@@ -276,6 +276,15 @@ const tr = {
     minimizeToTray: "Kapatınca sistem tepsisine küçült",
     startMinimized: "Küçültülmüş başlat",
     autostart: "Windows ile birlikte başlat",
+    autoUpdate: "Açılışta güncellemeleri denetle",
+    updates: "Güncellemeler",
+    checkUpdates: "Güncellemeleri denetle",
+    currentVersion: "Yüklü sürüm: {version}",
+    upToDate: "En güncel sürümü kullanıyorsunuz.",
+    updateAvailable: "Yeni sürüm mevcut: {version}",
+    installUpdate: "Yükle ve yeniden başlat",
+    updatesDisabled: "Bu derlemede otomatik güncelleme yapılandırılmamış.",
+    dataFolder: "Veri klasörü",
   },
 };
 

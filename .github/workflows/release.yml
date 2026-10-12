@@ -10,6 +10,10 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      # Updates are enabled only when the signing secrets exist
+      # (see README → "Otomatik güncelleme").
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && secrets.TAURI_UPDATER_PUBKEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,13 +23,32 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
+
+      - name: Prepare updater config
+        if: env.HAS_UPDATER_KEY == 'true'
+        shell: bash
+        env:
+          PUBKEY: ${{ secrets.TAURI_UPDATER_PUBKEY }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const config = JSON.parse(fs.readFileSync("src-tauri/tauri.updater.conf.json", "utf8"));
+            config.plugins.updater.pubkey = process.env.PUBKEY;
+            fs.writeFileSync("src-tauri/tauri.updater.generated.json", JSON.stringify(config));
+          '
+          echo "TAURI_ARGS=--config src-tauri/tauri.updater.generated.json" >> "$GITHUB_ENV"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Rodi Checker ${{ github.ref_name }}
           releaseDraft: true
+          args: ${{ env.TAURI_ARGS }}
+
       - name: Build CLI
         run: cargo build --release -p checker-cli
       - name: Attach CLI to release

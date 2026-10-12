@@ -15,6 +15,7 @@ export interface AppSettings {
   startMinimized: boolean;
   autostart: boolean;
   minimizeToTray: boolean;
+  autoUpdate: boolean;
   proxyJudgeUrl: string | null;
   proxyTestUrl: string | null;
   geoipDbPath: string | null;
@@ -96,6 +97,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   startMinimized: false,
   autostart: false,
   minimizeToTray: true,
+  autoUpdate: true,
   proxyJudgeUrl: null,
   proxyTestUrl: null,
   geoipDbPath: null,
@@ -299,4 +301,11 @@ export interface ReportRequest {
 export interface ReportPreview {
   table: { title: string; headers: string[]; rows: string[][] };
   totalRows: number;
+}
+
+export interface UpdateInfo {
+  enabled: boolean;
+  currentVersion: string;
+  available: string | null;
+  notes: string | null;
 }

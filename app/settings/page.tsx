@@ -1,9 +1,12 @@
 "use client";
 
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { Button, Card, Checkbox as Toggle, Field, inputClass, PageHeader } from "@/components/ui";
+import { Button, Card, Checkbox as Toggle, ErrorText, Field, inputClass, PageHeader } from "@/components/ui";
+import { api } from "@/lib/api";
 import { pickFile } from "@/lib/dialog";
+import { fill } from "@/lib/i18n-format";
 import { useT } from "@/i18n";
 import { useSaveSettings, useSettings } from "@/lib/settings";
 import { DEFAULT_SETTINGS, type AppSettings, type Language, type Theme } from "@/lib/types";
@@ -83,6 +86,7 @@ export default function SettingsPage() {
           <Toggle label={t.settings.minimizeToTray} checked={draft.minimizeToTray} onChange={(v) => set("minimizeToTray", v)} />
           <Toggle label={t.settings.startMinimized} checked={draft.startMinimized} onChange={(v) => set("startMinimized", v)} />
           <Toggle label={t.settings.autostart} checked={draft.autostart} onChange={(v) => set("autostart", v)} />
+          <Toggle label={t.settings.autoUpdate} checked={draft.autoUpdate} onChange={(v) => set("autoUpdate", v)} />
         </Card>
 
         <Card className="space-y-4 lg:col-span-2">
@@ -141,7 +145,7 @@ export default function SettingsPage() {
             <div className="flex gap-2">
               <input
                 className={inputClass}
-                placeholder="C:\\GeoLite2-Country.mmdb"
+                placeholder={"C:\\GeoLite2-Country.mmdb"}
                 value={draft.geoipDbPath ?? ""}
                 onChange={(e) => set("geoipDbPath", e.target.value || null)}
               />
@@ -156,7 +160,43 @@ export default function SettingsPage() {
             </div>
           </Field>
         </Card>
+        <UpdatesCard />
       </div>
     </form>
+  );
+}
+
+function UpdatesCard() {
+  const t = useT();
+  const info = useQuery({ queryKey: ["app-info"], queryFn: api.appInfo });
+  const check = useMutation({ mutationFn: api.updateCheck });
+  const install = useMutation({ mutationFn: api.updateInstall });
+  const result = check.data;
+
+  return (
+    <Card className="space-y-3 lg:col-span-2">
+      <div className="flex items-center justify-between">
+        <h2 className="font-medium">{t.settings.updates}</h2>
+        <Button disabled={check.isPending} onClick={() => check.mutate()}>
+          {check.isPending ? t.common.loading : t.settings.checkUpdates}
+        </Button>
+      </div>
+      <p className="text-sm text-muted">{fill(t.settings.currentVersion, { version: info.data?.version ?? "-" })}</p>
+      {result && !result.enabled && <p className="text-sm text-muted">{t.settings.updatesDisabled}</p>}
+      {result?.enabled && !result.available && <p className="text-sm text-up">{t.settings.upToDate}</p>}
+      {result?.available && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-accent">{fill(t.settings.updateAvailable, { version: result.available })}</p>
+          {result.notes && <p className="whitespace-pre-line text-xs text-muted">{result.notes}</p>}
+          <Button variant="primary" disabled={install.isPending} onClick={() => install.mutate()}>
+            {install.isPending ? t.common.loading : t.settings.installUpdate}
+          </Button>
+        </div>
+      )}
+      <ErrorText error={check.error ?? install.error} />
+      <p className="text-xs text-muted">
+        {t.settings.dataFolder}: <span className="break-all font-mono">{info.data?.dataDir ?? "-"}</span>
+      </p>
+    </Card>
   );
 }

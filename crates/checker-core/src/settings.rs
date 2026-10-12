@@ -36,6 +36,8 @@ pub struct AppSettings {
     pub start_minimized: bool,
     pub autostart: bool,
     pub minimize_to_tray: bool,
+    /// Check for a new version on startup.
+    pub auto_update: bool,
     /// Endpoint that echoes request headers, used for proxy anonymity checks.
     pub proxy_judge_url: Option<String>,
     /// Connectivity test URL used when no judge is configured.
@@ -56,6 +58,7 @@ impl Default for AppSettings {
             start_minimized: false,
             autostart: false,
             minimize_to_tray: true,
+            auto_update: true,
             proxy_judge_url: None,
             proxy_test_url: None,
             geoip_db_path: None,

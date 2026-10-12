@@ -19,7 +19,11 @@ use state::AppState;
 const DATABASE_FILE: &str = "rodi-checker.db";
 
 pub fn run() {
-    tauri::Builder::default()
+    let context = tauri::generate_context!();
+    // Only builds made with tauri.updater.conf.json carry an updater config.
+    let updater_enabled = context.config().plugins.0.contains_key("updater");
+
+    let mut builder = tauri::Builder::default()
         // Must be registered first so a second launch focuses the running app.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             tray::show_main_window(app);
@@ -30,9 +34,19 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_notification::init());
+    if updater_enabled {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
+        .manage(commands::updates::UpdaterEnabled(updater_enabled))
         .setup(|app| {
-            let data_dir = app.path().app_data_dir()?;
+            // RODI_CHECKER_DATA_DIR overrides the data folder (portable use, tests).
+            let data_dir = match std::env::var_os("RODI_CHECKER_DATA_DIR") {
+                Some(dir) => std::path::PathBuf::from(dir),
+                None => app.path().app_data_dir()?,
+            };
             std::fs::create_dir_all(&data_dir)?;
             let database_path = data_dir.join(DATABASE_FILE);
 
@@ -77,6 +91,9 @@ pub fn run() {
                 monitor_runtime::schedule_all(&handle).await;
                 commands::files::restore_watchers(&handle).await;
                 tray::refresh_status(&handle).await;
+                if handle.state::<AppState>().settings().auto_update {
+                    commands::updates::check_on_startup(&handle).await;
+                }
             });
 
             system_runtime::start(app.handle().clone());
@@ -143,8 +160,10 @@ pub fn run() {
             commands::reports::report_preview,
             commands::reports::report_export,
             commands::dashboard::dashboard_summary,
+            commands::updates::update_check,
+            commands::updates::update_install,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Rodi Checker");
 }
 

@@ -12,6 +12,7 @@ import {
   type ReportFormat,
   type ReportPreview,
   type ReportRequest,
+  type UpdateInfo,
   type AlertRule,
   type FiringAlert,
   type NewAlertRule,
@@ -133,4 +134,8 @@ export const api = {
   reportPreview: (request: ReportRequest) => call<ReportPreview>("report_preview", { request }),
   reportExport: (request: ReportRequest, format: ReportFormat, path: string) =>
     call<number>("report_export", { request, format, path }),
+
+  // ---- updates ----
+  updateCheck: () => call<UpdateInfo>("update_check"),
+  updateInstall: () => call<void>("update_install"),
 };

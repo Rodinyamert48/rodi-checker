@@ -190,12 +190,12 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 |---|---|
 | Rust birim/entegrasyon | `cargo test`, `wiremock` (sahte HTTP sunucu), `tempfile` |
 | Frontend birim | `vitest` + Testing Library |
-| Uçtan uca | `tauri-driver` + WebdriverIO (Windows, msedgedriver) |
+| Uçtan uca | `tauri-driver` + WebdriverIO (CI'da Linux/WebKitGTK üzerinde; WebView2 sürücüsü Edge sürümüne bağlı olduğu için) |
 | Lint/format | `clippy -D warnings`, `rustfmt`, `eslint`, `prettier` |
 
 ## 8. CI/CD (GitHub Actions)
-- `ci.yml`: her PR'da `windows-latest` üzerinde fmt, clippy, test, frontend lint/test/build
-- `release.yml`: tag ile `tauri-action` → **Windows (.msi + NSIS .exe)** ve `rodi-checker.exe` CLI; updater için `latest.json` yayını
+- `ci.yml`: her PR'da `windows-latest` üzerinde fmt, clippy, test, frontend lint/test/build; Ubuntu'da uçtan uca testler
+- `release.yml`: tag ile `tauri-action` → **Windows (.msi + NSIS .exe)** ve `rodi-checker.exe` CLI; imza secret'ları tanımlıysa updater için `latest.json` yayını
 
 ---
 
@@ -210,7 +210,7 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 | **4** ✅ | Dosya Bütünlüğü | Paralel hash, baseline, karşılaştırma, canlı izleme |
 | **5** ✅ | Sistem Sağlığı | Canlı metrikler, süreç/port/servis, eşik uyarıları |
 | **6** ✅ | Ortak özellikler + CLI | Dashboard, bildirimler, raporlar, tepsi, autostart, i18n, `rodi-checker` CLI komutları |
-| **7** | Cilalama & Yayın | E2E testler, performans, ikonlar, imzalı updater, release pipeline, README |
+| **7** ✅ | Cilalama & Yayın | E2E testler, performans, ikonlar, imzalı updater, release pipeline, README |
 
 Her aşama ayrı commit/PR olarak ilerler ve sonunda çalışır durumda olur.
 
