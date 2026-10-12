@@ -1,6 +1,6 @@
 # Rodi Checker — Geliştirme Planı
 
-Rust + **Tauri 2** tabanlı, tek masaüstü uygulamasında dört kontrol modülünü birleştiren "her şey dahil" checker.
+Rust + **Tauri 2** tabanlı, Windows için tek masaüstü uygulamasında dört kontrol modülünü birleştiren "her şey dahil" checker.
 
 | Modül | Ne kontrol eder |
 |---|---|
@@ -9,7 +9,9 @@ Rust + **Tauri 2** tabanlı, tek masaüstü uygulamasında dört kontrol modül�
 | 📁 **Dosya Bütünlüğü** | Klasör/dosya hash'leri (SHA-256, BLAKE3), referans "baseline" ile karşılaştırma, canlı değişiklik izleme |
 | 🖥️ **Sistem Sağlığı** | CPU, RAM, disk, ağ, süreçler, servisler ve yerel portlar; eşik aşımı uyarıları |
 
-Ortak özellikler: zamanlayıcı, bildirimler, geçmiş + grafikler, raporlama/dışa aktarma, sistem tepsisi, açık/koyu tema, TR/EN dil desteği, otomatik güncelleme.
+Ortak özellikler: zamanlayıcı, masaüstü bildirimleri, geçmiş + grafikler, raporlama/dışa aktarma, sistem tepsisi, açık/koyu tema, TR/EN dil desteği, otomatik güncelleme ve aynı çekirdeği kullanan **CLI** (`rodi-checker-cli`).
+
+**Kesinleşen kararlar:** Hedef platform **Windows** · Frontend **Next.js + Tailwind CSS** · Dil **Türkçe (varsayılan) + İngilizce** · Webhook **yok** · Proxy anonimlik testi **var** · CLI **var**.
 
 ---
 
@@ -31,17 +33,16 @@ Ortak özellikler: zamanlayıcı, bildirimler, geçmiş + grafikler, raporlama/d
 | GeoIP (çevrimdışı) | `maxminddb` (opsiyonel, kullanıcı DB dosyası sağlar) |
 | Hata / log | `thiserror`, `anyhow`, `tracing` |
 | Serileştirme | `serde`, `serde_json`, `csv` |
-| TS tip üretimi | `specta` + `tauri-specta` |
 
 ### Tauri eklentileri
-`notification`, `dialog`, `fs`, `store`, `autostart`, `updater`, `single-instance`, `log`, `window-state`, `clipboard-manager` + yerleşik sistem tepsisi.
+`notification`, `dialog`, `fs`, `autostart`, `updater`, `single-instance`, `log`, `window-state`, `clipboard-manager` + yerleşik sistem tepsisi.
 
 ### Frontend
-- **React 18 + TypeScript + Vite**
-- **Tailwind CSS + shadcn/ui** (bileşenler), **lucide-react** (ikonlar)
+- **Next.js (App Router) + TypeScript**, `output: "export"` ile statik dışa aktarım (Tauri SSR desteklemez; tüm sayfalar istemci tarafında çalışır)
+- **Tailwind CSS** + **lucide-react** (ikonlar)
 - **TanStack Query** (backend çağrıları/önbellek), **Zustand** (UI durumu)
 - **TanStack Table** (büyük listeler, sanal kaydırma), **Recharts** (grafikler)
-- **react-router**, **react-hook-form + zod**, **i18next** (TR/EN)
+- **react-hook-form + zod**, hafif sözlük tabanlı i18n (TR/EN)
 
 ---
 
@@ -49,8 +50,8 @@ Ortak özellikler: zamanlayıcı, bildirimler, geçmiş + grafikler, raporlama/d
 
 ```
 ┌─────────────────────── Frontend (WebView) ───────────────────────┐
-│  Dashboard │ Web İzleme │ Proxy │ Dosya │ Sistem │ Raporlar │ Ayarlar │
-│        TanStack Query  ◄── tauri-specta tipli komutlar            │
+│ Next.js: Dashboard│Web│Proxy│Dosya│Sistem│Raporlar│Ayarlar       │
+│        TanStack Query  ◄── lib/api.ts tipli komut sarmalayıcıları │
 └──────────────▲──────────────────────────────┬────────────────────┘
                │ events (ilerleme, sonuç)      │ invoke (komutlar)
 ┌──────────────┴──────────────────────────────▼────────────────────┐
@@ -83,7 +84,7 @@ pub struct CheckResult {
 }
 ```
 - `JobRunner`: `tokio::Semaphore` ile eşzamanlılık sınırı, `CancellationToken` ile iptal, ilerleme `tauri::Emitter` ile frontend'e akar.
-- `checker-core` ayrı crate olduğu için birim testleri GUI olmadan çalışır ve ileride bir **CLI** (`rodi-checker-cli`) eklemek kolaydır.
+- `checker-core` ayrı crate olduğu için birim testleri GUI olmadan çalışır; **CLI** (`rodi-checker-cli`) aynı çekirdeği kullanır.
 
 ---
 
@@ -93,6 +94,7 @@ pub struct CheckResult {
 rodi-checker/
 ├─ Cargo.toml                 # workspace
 ├─ crates/
+│  ├─ checker-cli/            # `rodi-checker` komut satırı aracı
 │  └─ checker-core/
 │     ├─ src/{lib,checker,scheduler,runner,alerts,export}.rs
 │     ├─ src/web/{http,ssl,dns,tcp}.rs
@@ -107,8 +109,8 @@ rodi-checker/
 │  ├─ capabilities/default.json
 │  ├─ icons/
 │  └─ tauri.conf.json
-├─ src/                       # React frontend
-│  ├─ pages/  components/  hooks/  stores/  lib/bindings.ts  i18n/
+├─ app/                       # Next.js App Router sayfaları
+├─ components/  lib/  i18n/   # UI bileşenleri, tipli komutlar, TR/EN sözlükleri
 ├─ tests/e2e/                 # WebDriver (tauri-driver) testleri
 ├─ .github/workflows/{ci,release}.yml
 └─ PLAN.md
@@ -126,7 +128,7 @@ rodi-checker/
 | `proxy_lists` / `proxies` | liste; host, port, protocol, auth, son durum, latency, anonymity, exit_ip, country |
 | `file_baselines` / `file_entries` | baseline adı, kök klasör, algoritma; path, size, mtime, hash |
 | `system_samples` | ts, cpu, mem, disk_json, net_json *(yaşa göre otomatik budama)* |
-| `alert_rules` | hedef, koşul (ör. latency > 2000 ms, SSL < 14 gün, CPU > %90), kanal |
+| `alert_rules` | hedef, koşul (ör. latency > 2000 ms, SSL < 14 gün, CPU > %90) → masaüstü bildirimi |
 | `settings` | key, value_json |
 
 Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi çalışır.
@@ -166,7 +168,7 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 
 ### 5.5 Ortak
 - **Dashboard**: tüm modüllerin özet kartları, son olaylar, uyarılar
-- **Bildirimler**: masaüstü bildirimi; opsiyonel Webhook (Discord/Slack/Telegram URL'si)
+- **Bildirimler**: Windows masaüstü bildirimleri (webhook yok)
 - **Raporlar**: CSV, JSON, kendi içinde HTML rapor dışa aktarımı
 - **Ayarlar**: tema, dil, başlangıçta çalıştır, tepsiye küçült, saklama süresi, varsayılan timeout/eşzamanlılık, ayar yedekle/geri yükle
 - **Sistem tepsisi**: genel durum ikonu (yeşil/sarı/kırmızı), hızlı menü
@@ -176,7 +178,7 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 ## 6. Güvenlik
 - Tauri **capabilities** ile en az yetki; `fs` sadece kullanıcının seçtiği yollar
 - Sıkı **CSP**, uzak içerik yüklenmez; tüm ağ istekleri Rust tarafında
-- Proxy/webhook şifreleri işletim sistemi anahtarlığında (`keyring` crate)
+- Proxy şifreleri Windows Credential Manager'da (`keyring` crate)
 - Girdi doğrulama (URL, host, port) hem frontend (zod) hem backend'de
 - Güncellemeler imzalı (`tauri-plugin-updater` + imza anahtarı)
 - `cargo audit` / `cargo deny` CI'da
@@ -188,12 +190,12 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 |---|---|
 | Rust birim/entegrasyon | `cargo test`, `wiremock` (sahte HTTP sunucu), `tempfile` |
 | Frontend birim | `vitest` + Testing Library |
-| Uçtan uca | `tauri-driver` + WebdriverIO (Linux/Windows) |
+| Uçtan uca | `tauri-driver` + WebdriverIO (Windows, msedgedriver) |
 | Lint/format | `clippy -D warnings`, `rustfmt`, `eslint`, `prettier` |
 
 ## 8. CI/CD (GitHub Actions)
-- `ci.yml`: her PR'da fmt, clippy, test, frontend lint/test, build kontrolü
-- `release.yml`: tag ile `tauri-action` → **Windows (.msi/.exe)**, **macOS (.dmg, universal)**, **Linux (.AppImage/.deb/.rpm)**; updater için `latest.json` yayını
+- `ci.yml`: her PR'da `windows-latest` üzerinde fmt, clippy, test, frontend lint/test/build
+- `release.yml`: tag ile `tauri-action` → **Windows (.msi + NSIS .exe)** ve `rodi-checker.exe` CLI; updater için `latest.json` yayını
 
 ---
 
@@ -201,23 +203,27 @@ Veri saklama süresi ayarlanabilir (ör. 30 gün) ve arka planda budama işi ça
 
 | # | Aşama | Çıktı |
 |---|---|---|
-| **0** | İskelet | Workspace, Tauri 2 + React + Tailwind kurulumu, tauri-specta, CI, SQLite + migration'lar, layout/navigasyon, tema |
-| **1** | Çekirdek | `Checker` trait, JobRunner, Scheduler, storage katmanı, event akışı, ayarlar |
+| **0** ✅ | İskelet | Workspace, Tauri 2 + Next.js + Tailwind kurulumu, CI, SQLite + migration'lar, layout/navigasyon, tema |
+| **1** ✅ | Çekirdek | `Checker` trait, JobRunner, Scheduler, storage katmanı, event akışı, ayarlar |
 | **2** | Web İzleme | HTTP/SSL/DNS/TCP kontrolleri, monitör CRUD, geçmiş grafikleri, uptime |
 | **3** | Proxy Checker | İçe aktarma/parser, toplu test, anonimlik, GeoIP, filtre/dışa aktarma |
 | **4** | Dosya Bütünlüğü | Paralel hash, baseline, karşılaştırma, canlı izleme |
 | **5** | Sistem Sağlığı | Canlı metrikler, süreç/port/servis, eşik uyarıları |
-| **6** | Ortak özellikler | Dashboard, bildirim + webhook, raporlar, tepsi, autostart, i18n |
+| **6** | Ortak özellikler + CLI | Dashboard, bildirimler, raporlar, tepsi, autostart, i18n, `rodi-checker` CLI komutları |
 | **7** | Cilalama & Yayın | E2E testler, performans, ikonlar, imzalı updater, release pipeline, README |
 
 Her aşama ayrı commit/PR olarak ilerler ve sonunda çalışır durumda olur.
 
 ---
 
-## 10. Netleştirilmesi Gerekenler (varsayılanlar parantez içinde)
-1. Hedef platformlar? *(Windows + Linux + macOS)*
-2. Frontend: React mi, Svelte mi? *(React + TS)*
-3. Arayüz dili? *(Türkçe varsayılan + İngilizce)*
-4. Webhook bildirimleri gerekli mi? *(Evet, Discord/Slack/Telegram)*
-5. Proxy anonimlik testi için judge URL'si? *(Kullanıcı ayarlardan girer)*
-6. Ek bir CLI sürümü istenir mi? *(Şimdilik hayır, mimari hazır)*
+## 10. CLI (`rodi-checker`)
+```
+rodi-checker web    <url> [--timeout 10] [--expect 200] [--keyword "..."]
+rodi-checker ssl    <host[:port]>
+rodi-checker dns    <domain> [--type A|AAAA|MX|TXT|CNAME]
+rodi-checker port   <host> <port>
+rodi-checker proxy  <dosya.txt> [--concurrency 50] [--judge <url>] [--out calisanlar.txt]
+rodi-checker hash   <dosya|klasör> [--algo sha256|blake3] [--save-baseline ad] [--compare ad]
+rodi-checker system
+```
+Ortak bayraklar: `--json` (makine okunur çıktı), `--lang tr|en`. Çıkış kodu: 0 = başarılı, 1 = başarısız kontrol, 2 = hata.
