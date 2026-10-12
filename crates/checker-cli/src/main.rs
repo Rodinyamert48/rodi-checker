@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use checker_core::files::{self, HashAlgorithm, ScanOptions};
 use checker_core::proxy::{parse_list, GeoIp, ProxyChecker, ProxyCheckerConfig, ProxyProtocol};
+use checker_core::system::{self, ProcessSort, SystemMonitor};
 use checker_core::web::{
     DnsTarget, HttpTarget, RecordType, SslTarget, TcpTarget, WebChecker, WebTarget,
 };
@@ -140,6 +141,18 @@ enum Command {
         /// Database file (defaults to the desktop app's database).
         #[arg(long)]
         db: Option<String>,
+    },
+    /// Show CPU, memory, disks, network and top processes.
+    System {
+        /// Number of top processes to list.
+        #[arg(long, default_value_t = 10)]
+        processes: usize,
+        /// Also list listening ports.
+        #[arg(long)]
+        ports: bool,
+        /// Also list services.
+        #[arg(long)]
+        services: bool,
     },
 }
 
@@ -325,8 +338,138 @@ async fn main() -> ExitCode {
                 }
             }
         }
+        Command::System {
+            processes,
+            ports,
+            services,
+        } => match run_system(*processes, *ports, *services, &cli) {
+            Ok(code) => code,
+            Err(err) => {
+                eprintln!("{err}");
+                2
+            }
+        },
     };
     ExitCode::from(code)
+}
+
+fn human_bytes(bytes: f64) -> String {
+    let units = ["B", "KB", "MB", "GB", "TB"];
+    let mut value = bytes;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < units.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    format!("{value:.1} {}", units[unit])
+}
+
+fn run_system(
+    process_count: usize,
+    show_ports: bool,
+    show_services: bool,
+    cli: &Cli,
+) -> anyhow::Result<u8> {
+    let mut monitor = SystemMonitor::new();
+    // CPU usage needs two refreshes some time apart.
+    std::thread::sleep(sysinfo_interval());
+    let snapshot = monitor.snapshot();
+    let processes = monitor.processes(ProcessSort::Cpu, process_count);
+    let ports = if show_ports {
+        system::listening_ports()?
+    } else {
+        Vec::new()
+    };
+    let services = if show_services {
+        system::list_services()?
+    } else {
+        Vec::new()
+    };
+
+    if cli.json {
+        output::print_json(&serde_json::json!({
+            "snapshot": snapshot,
+            "processes": processes,
+            "ports": ports,
+            "services": services,
+        }));
+        return Ok(0);
+    }
+
+    let tr = matches!(cli.lang, Lang::Tr);
+    println!(
+        "{} · {}",
+        snapshot.hostname.as_deref().unwrap_or("-"),
+        snapshot.os.as_deref().unwrap_or("-")
+    );
+    println!(
+        "{}: {:.1}%  ({})",
+        if tr { "İşlemci" } else { "CPU" },
+        snapshot.cpu,
+        snapshot.cpu_name
+    );
+    println!(
+        "{}: {:.1}%  ({} / {})",
+        if tr { "Bellek" } else { "Memory" },
+        snapshot.mem_percent(),
+        human_bytes(snapshot.mem_used as f64),
+        human_bytes(snapshot.mem_total as f64)
+    );
+    for disk in &snapshot.disks {
+        println!(
+            "Disk {}: {:.1}%  ({} {})",
+            disk.mount_point,
+            disk.used_percent(),
+            human_bytes(disk.available as f64),
+            if tr { "boş" } else { "free" }
+        );
+    }
+    println!(
+        "{}: ↓ {}/s  ↑ {}/s",
+        if tr { "Ağ" } else { "Network" },
+        human_bytes(snapshot.net.rx_per_sec),
+        human_bytes(snapshot.net.tx_per_sec)
+    );
+    println!();
+    println!(
+        "{:>8}  {:>6}  {:>10}  {}",
+        "PID",
+        "CPU",
+        if tr { "BELLEK" } else { "MEMORY" },
+        if tr { "AD" } else { "NAME" }
+    );
+    for p in &processes {
+        println!(
+            "{:>8}  {:>5.1}%  {:>10}  {}",
+            p.pid,
+            p.cpu,
+            human_bytes(p.memory as f64),
+            p.name
+        );
+    }
+    if show_ports {
+        println!();
+        for port in &ports {
+            println!(
+                "{:<4} {:<6} {:<40} {:?}",
+                port.protocol, port.port, port.address, port.pids
+            );
+        }
+    }
+    if show_services {
+        println!();
+        for service in &services {
+            println!(
+                "{:<10?} {:<40} {}",
+                service.state, service.name, service.display_name
+            );
+        }
+    }
+    Ok(0)
+}
+
+fn sysinfo_interval() -> Duration {
+    Duration::from_millis(500)
 }
 
 struct HashOptions<'a> {

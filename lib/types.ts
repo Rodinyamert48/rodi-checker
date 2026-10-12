@@ -197,3 +197,79 @@ export interface FilesChangeEvent {
   baselineName: string;
   paths: string[];
 }
+
+export interface DiskInfo {
+  name: string;
+  mountPoint: string;
+  fileSystem: string;
+  total: number;
+  available: number;
+  removable: boolean;
+}
+
+export interface SystemSnapshot {
+  ts: string;
+  hostname: string | null;
+  os: string | null;
+  uptimeSecs: number;
+  cpu: number;
+  cpuPerCore: number[];
+  cpuName: string;
+  memUsed: number;
+  memTotal: number;
+  swapUsed: number;
+  swapTotal: number;
+  disks: DiskInfo[];
+  net: { rxPerSec: number; txPerSec: number; totalRx: number; totalTx: number };
+  temperatures: { label: string; celsius: number }[];
+  processCount: number;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  name: string;
+  cpu: number;
+  memory: number;
+  exe: string | null;
+}
+
+export interface PortInfo {
+  protocol: "tcp" | "udp";
+  port: number;
+  address: string;
+  pids: number[];
+  process: string | null;
+}
+
+export type ServiceState = "running" | "stopped" | "starting" | "stopping" | "paused" | "unknown";
+
+export interface ServiceInfo {
+  name: string;
+  displayName: string;
+  state: ServiceState;
+}
+
+export interface SystemSample {
+  ts: string;
+  cpu: number;
+  memUsed: number;
+  memTotal: number;
+}
+
+export type AlertMetric = "cpu" | "memory" | "disk" | "temperature" | "service" | "port";
+
+export interface NewAlertRule {
+  metric: AlertMetric;
+  threshold: number;
+  target: string | null;
+  enabled: boolean;
+}
+
+export interface AlertRule extends NewAlertRule {
+  id: number;
+}
+
+export interface FiringAlert {
+  ruleId: number;
+  message: string;
+}

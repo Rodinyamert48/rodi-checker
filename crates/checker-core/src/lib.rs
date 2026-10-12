@@ -13,6 +13,7 @@ pub mod scheduler;
 pub mod secret;
 pub mod settings;
 pub mod storage;
+pub mod system;
 pub mod web;
 
 pub use checker::{CheckContext, CheckKind, CheckResult, Checker, Status};

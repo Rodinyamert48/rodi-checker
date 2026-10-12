@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, RwLock};
 
 use checker_core::secret::SecretBox;
+use checker_core::system::{Snapshot, SystemMonitor};
 use checker_core::web::WebChecker;
 use checker_core::{AppSettings, Scheduler, Storage};
 use tokio_util::sync::CancellationToken;
@@ -21,6 +22,10 @@ pub struct AppState {
     pub files_cancel: Arc<AtomicBool>,
     /// Live folder watchers, by baseline id.
     pub watchers: Mutex<HashMap<i64, ::notify::RecommendedWatcher>>,
+    pub system: Mutex<SystemMonitor>,
+    pub last_snapshot: RwLock<Option<Snapshot>>,
+    /// Currently violated alert rules and their messages.
+    pub alerts_firing: Mutex<HashMap<i64, String>>,
     pub data_dir: PathBuf,
     pub database_path: PathBuf,
     /// Cached copy of the persisted settings for synchronous access

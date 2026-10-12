@@ -8,6 +8,14 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import {
   DEFAULT_SETTINGS,
+  type AlertRule,
+  type FiringAlert,
+  type NewAlertRule,
+  type PortInfo,
+  type ProcessInfo,
+  type ServiceInfo,
+  type SystemSample,
+  type SystemSnapshot,
   type AppInfo,
   type AppSettings,
   type CheckKind,
@@ -102,4 +110,17 @@ export const api = {
   filesDeleteBaseline: (baselineId: number) => call<void>("files_delete_baseline", { baselineId }),
   filesWatching: () => call<number[]>("files_watching", undefined, []),
   filesWatch: (baselineId: number, enabled: boolean) => call<void>("files_watch", { baselineId, enabled }),
+
+  // ---- system health ----
+  systemSnapshot: () => call<SystemSnapshot>("system_snapshot"),
+  systemProcesses: (sort: "cpu" | "memory", limit = 30) => call<ProcessInfo[]>("system_processes", { sort, limit }, []),
+  systemKill: (pid: number) => call<void>("system_kill", { pid }),
+  systemPorts: () => call<PortInfo[]>("system_ports", undefined, []),
+  systemServices: () => call<ServiceInfo[]>("system_services", undefined, []),
+  systemHistory: (hours: number) => call<SystemSample[]>("system_history", { hours }, []),
+  alertRules: () => call<AlertRule[]>("system_alert_rules", undefined, []),
+  createAlertRule: (rule: NewAlertRule) => call<AlertRule>("system_create_alert_rule", { rule }),
+  toggleAlertRule: (id: number, enabled: boolean) => call<void>("system_toggle_alert_rule", { id, enabled }),
+  deleteAlertRule: (id: number) => call<void>("system_delete_alert_rule", { id }),
+  firingAlerts: () => call<FiringAlert[]>("system_firing", undefined, []),
 };

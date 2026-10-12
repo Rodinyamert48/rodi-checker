@@ -3,6 +3,7 @@
 mod baselines;
 mod models;
 mod proxies;
+mod system;
 
 use std::path::Path;
 use std::str::FromStr;
@@ -16,6 +17,7 @@ use sqlx::SqlitePool;
 pub use baselines::Baseline;
 pub use models::{Incident, Monitor, MonitorStats, NewMonitor, StoredResult};
 pub use proxies::{ProxyListSummary, StoredProxy};
+pub use system::SystemSample;
 
 use crate::checker::{CheckKind, CheckResult};
 use crate::error::{CoreError, Result};

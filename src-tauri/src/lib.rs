@@ -4,9 +4,10 @@ mod monitor_runtime;
 mod notify;
 mod secret_key;
 mod state;
+mod system_runtime;
 mod tray;
 
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 
 use checker_core::web::WebChecker;
 use checker_core::{AppSettings, Scheduler, Storage};
@@ -56,6 +57,9 @@ pub fn run() {
                 files_busy: Default::default(),
                 files_cancel: Default::default(),
                 watchers: Default::default(),
+                system: Mutex::new(checker_core::system::SystemMonitor::new()),
+                last_snapshot: Default::default(),
+                alerts_firing: Default::default(),
                 data_dir,
                 database_path,
                 settings: RwLock::new(settings),
@@ -73,6 +77,8 @@ pub fn run() {
                 monitor_runtime::schedule_all(&handle).await;
                 commands::files::restore_watchers(&handle).await;
             });
+
+            system_runtime::start(app.handle().clone());
 
             tray::create(app.handle())?;
 
@@ -122,6 +128,17 @@ pub fn run() {
             commands::files::files_delete_baseline,
             commands::files::files_watching,
             commands::files::files_watch,
+            commands::system::system_snapshot,
+            commands::system::system_processes,
+            commands::system::system_kill,
+            commands::system::system_ports,
+            commands::system::system_services,
+            commands::system::system_history,
+            commands::system::system_alert_rules,
+            commands::system::system_create_alert_rule,
+            commands::system::system_toggle_alert_rule,
+            commands::system::system_delete_alert_rule,
+            commands::system::system_firing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rodi Checker");

@@ -3,3 +3,4 @@ pub mod files;
 pub mod monitors;
 pub mod proxy;
 pub mod settings;
+pub mod system;
