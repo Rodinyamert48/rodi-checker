@@ -46,7 +46,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Rodi Checker ${{ github.ref_name }}
-          releaseDraft: true
+          releaseDraft: false
           args: ${{ env.TAURI_ARGS }}
 
       - name: Build CLI
