@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create, e.g. v0.1.0"
+        required: true
+        default: v0.1.0
 
 permissions:
   contents: write
@@ -44,8 +50,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: Rodi Checker ${{ github.ref_name }}
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: Rodi Checker ${{ inputs.tag || github.ref_name }}
           releaseDraft: false
           args: ${{ env.TAURI_ARGS }}
 
@@ -54,4 +60,4 @@ jobs:
       - name: Attach CLI to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} target/release/rodi-checker.exe --clobber
+        run: gh release upload ${{ inputs.tag || github.ref_name }} target/release/rodi-checker.exe --clobber
