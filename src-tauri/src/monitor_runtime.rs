@@ -68,6 +68,7 @@ pub async fn run_once(app: &AppHandle, monitor: &Monitor) -> CheckResult {
         None => {}
     }
 
+    crate::tray::refresh_status(app).await;
     let _ = app.emit(
         RESULT_EVENT,
         ResultEvent {

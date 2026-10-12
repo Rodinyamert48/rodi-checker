@@ -29,5 +29,9 @@ pub async fn save_settings(
     }
 
     state.set_settings(saved.clone());
+    if saved.language != previous.language {
+        crate::tray::rebuild_menu(&app);
+        crate::tray::refresh_status(&app).await;
+    }
     Ok(saved)
 }

@@ -50,9 +50,15 @@ pub async fn update_monitor(
 }
 
 #[tauri::command]
-pub async fn delete_monitor(state: State<'_, AppState>, id: i64) -> CommandResult<()> {
+pub async fn delete_monitor(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: i64,
+) -> CommandResult<()> {
     state.scheduler.unschedule(id);
-    Ok(state.storage.delete_monitor(id).await?)
+    state.storage.delete_monitor(id).await?;
+    crate::tray::refresh_status(&app).await;
+    Ok(())
 }
 
 #[tauri::command]

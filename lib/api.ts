@@ -8,6 +8,10 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import {
   DEFAULT_SETTINGS,
+  type DashboardSummary,
+  type ReportFormat,
+  type ReportPreview,
+  type ReportRequest,
   type AlertRule,
   type FiringAlert,
   type NewAlertRule,
@@ -123,4 +127,10 @@ export const api = {
   toggleAlertRule: (id: number, enabled: boolean) => call<void>("system_toggle_alert_rule", { id, enabled }),
   deleteAlertRule: (id: number) => call<void>("system_delete_alert_rule", { id }),
   firingAlerts: () => call<FiringAlert[]>("system_firing", undefined, []),
+
+  // ---- dashboard & reports ----
+  dashboard: () => call<DashboardSummary>("dashboard_summary"),
+  reportPreview: (request: ReportRequest) => call<ReportPreview>("report_preview", { request }),
+  reportExport: (request: ReportRequest, format: ReportFormat, path: string) =>
+    call<number>("report_export", { request, format, path }),
 };

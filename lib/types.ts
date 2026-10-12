@@ -273,3 +273,30 @@ export interface FiringAlert {
   ruleId: number;
   message: string;
 }
+
+export interface DashboardSummary {
+  monitors: { total: number; up: number; degraded: number; down: number; paused: number; pending: number };
+  proxyLists: number;
+  proxiesTotal: number;
+  proxiesWorking: number;
+  baselines: number;
+  watching: number;
+  cpu: number | null;
+  memPercent: number | null;
+  firing: FiringAlert[];
+  incidents: Incident[];
+}
+
+export type ReportKind = "monitor_results" | "incidents" | "proxies" | "baselines" | "system_samples";
+export type ReportFormat = "csv" | "json" | "html";
+
+export interface ReportRequest {
+  kind: ReportKind;
+  hours: number;
+  targetId: number | null;
+}
+
+export interface ReportPreview {
+  table: { title: string; headers: string[]; rows: string[][] };
+  totalRows: number;
+}

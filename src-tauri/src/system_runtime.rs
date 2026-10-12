@@ -119,6 +119,9 @@ async fn check_alerts(
         *firing = now_firing;
         newly
     };
+    if !newly.is_empty() || state.alerts_firing.lock().unwrap().is_empty() {
+        crate::tray::refresh_status(app).await;
+    }
     for message in newly {
         let title = notify::tr_en(app, "Sistem uyarısı", "System alert");
         notify::send(app, &title, &message);

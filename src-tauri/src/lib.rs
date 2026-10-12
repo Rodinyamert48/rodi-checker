@@ -76,6 +76,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 monitor_runtime::schedule_all(&handle).await;
                 commands::files::restore_watchers(&handle).await;
+                tray::refresh_status(&handle).await;
             });
 
             system_runtime::start(app.handle().clone());
@@ -139,6 +140,9 @@ pub fn run() {
             commands::system::system_toggle_alert_rule,
             commands::system::system_delete_alert_rule,
             commands::system::system_firing,
+            commands::reports::report_preview,
+            commands::reports::report_export,
+            commands::dashboard::dashboard_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rodi Checker");

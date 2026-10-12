@@ -8,6 +8,7 @@ pub mod error;
 pub mod files;
 pub mod monitoring;
 pub mod proxy;
+pub mod reports;
 pub mod runner;
 pub mod scheduler;
 pub mod secret;
